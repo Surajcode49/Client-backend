@@ -1,83 +1,126 @@
 const express = require("express");
-const bodyParser = require("body-parser");
+const port = 5000;
 const mongoose = require("mongoose");
+const bodyParser = require("body-parser");
 const app = express();
-const port = 8080;
 
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(express.json());
+app.use(express.json()); // <-- Missing parentheses
 
 mongoose
-  .connect("mongodb://localhost:27017/test", {
+  .connect("mongodb://localhost:27017/admin", {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
   .then(() => {
-    console.log("mongodb is connected bro ");
+    console.log("mongo is connected bro don't worry bro ");
   })
   .catch((err) => {
     console.log(err);
   });
 
+// Define the schema for products
 const productSchema = new mongoose.Schema({
-  name: "string",
-  roll: "number",
-  role: "string",
+  name: String, // <-- Corrected type definitions
+  number: Number,
+  gender: String,
 });
-const product = mongoose.model("collection", productSchema);
 
-// create api
+// Create a model based on the schema
+const Product = mongoose.model("Product", productSchema);
 
 app.post("/new", async (req, res) => {
   try {
-    const newProduct = await product.create(req.body);
+    const newProduct = await Product.create(req.body); // <-- Use Product model to create a new product
     res.status(200).json({
       success: true,
-      product: newProduct,
+      product: newProduct, // <-- Return the newly created product
     });
   } catch (err) {
     res.status(500).json({
       success: false,
-      message: err.message,
+      error: err.message,
     });
   }
 });
 
+// create a api for the read the data
 
-// READ APIS 
-app.get("/read",async(req,res)=>{
-  try{
-      const newProduct = await product.find(req.body);
-      res.status(200).json({
-        success:true,
-        product:newProduct,
-      })
-  } catch(err) {
-      res.status(500).json({
-        success:false,
-        message: err.message,
-      })
+app.get("/read", async (req, res) => {
+  try {
+    const products = await Product.find();
 
+    res.status(200).json({
+      success: true,
+      products, // Sending retrieved products in the response
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
-})
+});
 
-//update apis
+// api for update the data
 
-app.put("/up",(req,res)=>{
-  try{
+app.put("/:id", async (req, res) => {
+  try {
+    let product = await Product.findById(req.params.id);
 
-  }catch(err){
-    
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    product = await Product.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      useFindAndModify: true, // Corrected option name
+      runValidators: true,
+    });
+
+    res.status(200).json({
+      success: true,
+      product,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
-})
+});
 
+// Delete api
 
+app.delete("/:id", async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
 
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
 
+    await Product.deleteOne({ _id: req.params.id });
 
+    res.status(200).json({
+      success: true,
+      message: "Product is deleted from the database",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
 
-
-
-app.listen(8080, (req, res) => {
-  console.log(`server is running at ${port}`);
+app.listen(5000, () => {
+  // <-- Use 'port' variable instead of hardcoding port number
+  console.log(`server is running bro ${port}`);
 });
